@@ -31,22 +31,11 @@ export const load = (async ({ locals }) => {
 
 	const states = (await locals.db
 		.selectFrom('MediaItem')
-		.select(({ fn }) => [
-			fn.count<number>('_id').filterWhere('last_state', '=', 'Completed').as('Completed'),
-			fn.count<number>('_id').filterWhere('last_state', '=', 'Failed').as('Failed'),
-			fn.count<number>('_id').filterWhere('last_state', '=', 'Requested').as('Requested'),
-			fn.count<number>('_id').filterWhere('last_state', '=', 'Indexed').as('Indexed'),
-			fn.count<number>('_id').filterWhere('last_state', '=', 'Scraped').as('Scraped'),
-			fn.count<number>('_id').filterWhere('last_state', '=', 'Downloaded').as('Downloaded'),
-			fn.count<number>('_id').filterWhere('last_state', '=', 'Symlinked').as('Symlinked'),
-			fn.count<number>('_id').filterWhere('last_state', '=', 'Unreleased').as('Unreleased'),
-			fn.count<number>('_id').filterWhere('last_state', '=', 'Ongoing').as('Ongoing'),
-			fn
-				.count<number>('_id')
-				.filterWhere('last_state', '=', 'PartiallyCompleted')
-				.as('PartiallyCompleted'),
-			fn.count<number>('_id').filterWhere('last_state', '=', 'Unknown').as('Unknown')
-		])
+		.select(({ fn }) =>
+			Object.keys(statesName).map((state) =>
+				fn.count<number>('_id').filterWhere('last_state', '=', state).as(state)
+			)
+		)
 		.executeTakeFirst()) as States;
 
 	async function getServices() {
