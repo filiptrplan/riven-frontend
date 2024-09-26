@@ -45,6 +45,7 @@
 	let selectedMagnetItem: Selected<{ _id: number; file?: string; folder?: string }>;
 	$: buttonEnabled = magnetLink && !magnetLoading && (isShow ? selectedMagnetItem : true);
 	let scrapedTorrentsStore = writable<ScrapedTorrent[]>([]);
+	let scrapeLoading = true;
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	function filterSpecial(seasons: any) {
@@ -126,7 +127,9 @@
 		}
 		toast.success('Magnet link added successfully');
 	async function onScrapeClick() {
+		scrapeLoading = true;
 		const torrents = (await scrapeItem(data.details.external_ids.imdb_id)) ?? [];
+		scrapeLoading = false;
 		scrapedTorrentsStore.update((x) => torrents);
 		if (!torrents) return;
 		if (torrents.length === 0) {
@@ -265,11 +268,13 @@
 							</Dialog.Trigger>
 							<Dialog.Content class="lg:max-w-3xl max-w-xl z-[99]">
 								<Dialog.Header>Scraped Torrents</Dialog.Header>
-								{#if $scrapedTorrentsStore}
+								{#if !scrapeLoading}
 									<ScrapeTable torrentStore={scrapedTorrentsStore} onAddMagnet={(magnet) => {
 									}} />
 								{:else}
-									<LoaderCircle class="animate-spin" />
+									<div class="flex items-center justify-center w-full h-32">
+									<LoaderCircle class="animate-spin size-10" />
+									</div>
 								{/if}
 							</Dialog.Content>
 						</Dialog.Root>
