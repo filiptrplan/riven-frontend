@@ -8,7 +8,7 @@
 	import ScrapeTableActions from '$lib/components/scrape-table-actions.svelte';
 
 	export let torrentStore: Readable<ScrapedTorrent[]>;
-    export let onAddMagnet: (magnet: string) => void;
+	export let onAddMagnet: (magnet: string) => void;
 
 	const table = createTable(torrentStore, {
 		page: addPagination()
@@ -28,9 +28,9 @@
 			accessor: (row) => row.infohash,
 			cell: ({ value }) => {
 				return createRender(ScrapeTableActions, {
-                    magnet: `magnet:?xt=urn:btih:${value}`,
-                    onAddMagnet
-                });
+					magnet: `magnet:?xt=urn:btih:${value}`,
+					onAddMagnet
+				});
 			}
 		})
 	]);
