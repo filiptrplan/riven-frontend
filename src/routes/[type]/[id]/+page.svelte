@@ -126,6 +126,8 @@
 			return;
 		}
 		toast.success('Magnet link added successfully');
+	}
+
 	async function onScrapeClick() {
 		scrapeLoading = true;
 		const torrents = (await scrapeItem(data.details.external_ids.imdb_id)) ?? [];
@@ -266,14 +268,13 @@
 									Scrape
 								</Button>
 							</Dialog.Trigger>
-							<Dialog.Content class="lg:max-w-3xl max-w-xl z-[99]">
+							<Dialog.Content class="z-[99] max-w-xl lg:max-w-3xl">
 								<Dialog.Header>Scraped Torrents</Dialog.Header>
 								{#if !scrapeLoading}
-									<ScrapeTable torrentStore={scrapedTorrentsStore} onAddMagnet={(magnet) => {
-									}} />
+									<ScrapeTable torrentStore={scrapedTorrentsStore} onAddMagnet={(magnet) => {}} />
 								{:else}
-									<div class="flex items-center justify-center w-full h-32">
-									<LoaderCircle class="animate-spin size-10" />
+									<div class="flex h-32 w-full items-center justify-center">
+										<LoaderCircle class="size-10 animate-spin" />
 									</div>
 								{/if}
 							</Dialog.Content>
