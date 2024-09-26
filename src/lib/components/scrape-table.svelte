@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createTable, Render, Subscribe, createRender } from 'svelte-headless-table';
-	import { readable, type Readable } from 'svelte/store';
+	import { derived, readable, writable, type Readable } from 'svelte/store';
 	import * as Table from '$lib/components/ui/table';
 	import type { ScrapedTorrent } from '$lib/routes/api/media/[id]/scrape/+server';
 	import { addPagination } from 'svelte-headless-table/plugins';
@@ -9,6 +9,10 @@
 
 	export let torrentStore: Readable<ScrapedTorrent[]>;
 	export let onAddMagnet: (magnet: string) => void;
+	export let magnetLoading: boolean = false;
+
+	let magnetLoadingStore = writable(magnetLoading);
+	$: magnetLoadingStore.set(magnetLoading);
 
 	const table = createTable(torrentStore, {
 		page: addPagination()
@@ -27,10 +31,14 @@
 			header: '',
 			accessor: (row) => row.infohash,
 			cell: ({ value }) => {
-				return createRender(ScrapeTableActions, {
-					magnet: `magnet:?xt=urn:btih:${value}`,
-					onAddMagnet
-				});
+				return createRender(
+					ScrapeTableActions,
+					derived(magnetLoadingStore, (magnetLoading) => ({
+						magnet: `magnet:?xt=urn:btih:${value}`,
+						onAddMagnet,
+						magnetLoading: magnetLoading
+					}))
+				);
 			}
 		})
 	]);

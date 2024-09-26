@@ -271,7 +271,14 @@
 							<Dialog.Content class="z-[99] max-w-xl lg:max-w-3xl">
 								<Dialog.Header>Scraped Torrents</Dialog.Header>
 								{#if !scrapeLoading}
-									<ScrapeTable torrentStore={scrapedTorrentsStore} onAddMagnet={(magnet) => {}} />
+									<ScrapeTable
+										torrentStore={scrapedTorrentsStore}
+										magnetLoading={magnetLoading}
+										onAddMagnet={(magnet) => {
+											if(!data.db) return;
+											addMagnetLink(data.db._id, magnet);
+										}}
+									/>
 								{:else}
 									<div class="flex h-32 w-full items-center justify-center">
 										<LoaderCircle class="size-10 animate-spin" />
