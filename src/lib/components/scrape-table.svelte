@@ -2,7 +2,7 @@
 	import { createTable, Render, Subscribe, createRender } from 'svelte-headless-table';
 	import { readable, type Readable } from 'svelte/store';
 	import * as Table from '$lib/components/ui/table';
-	import type { ScrapedTorrent } from '../../routes/api/media/[id]/scrape/+server';
+	import type { ScrapedTorrent } from '$lib/routes/api/media/[id]/scrape/+server';
 	import { addPagination } from 'svelte-headless-table/plugins';
 	import { Button } from '$lib/components/ui/button';
 	import ScrapeTableActions from '$lib/components/scrape-table-actions.svelte';
