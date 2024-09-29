@@ -12,7 +12,8 @@
 		CirclePower,
 		Clipboard,
 		Magnet,
-		LoaderCircle
+		LoaderCircle,
+		Search
 	} from 'lucide-svelte';
 	import * as Carousel from '$lib/components/ui/carousel/index.js';
 	import { Button } from '$lib/components/ui/button';
@@ -29,6 +30,11 @@
 	import { Input } from '$lib/components/ui/input';
 	import * as Select from '$lib/components/ui/select';
 	import type { Selected } from 'bits-ui';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import { Trigger } from '$lib/components/ui/accordion';
+	import { writable } from 'svelte/store';
+	import ScrapeTable from '$lib/components/scrape-table.svelte';
+	import type { ApiResponse, RivenItem, ScrapedTorrent } from '$lib/types';
 
 	export let data: PageData;
 
@@ -38,6 +44,9 @@
 	let isShow = data.db ? data.db.type === 'show' : false;
 	let selectedMagnetItem: Selected<{ _id: number; file?: string; folder?: string }>;
 	$: buttonEnabled = magnetLink && !magnetLoading && (isShow ? selectedMagnetItem : true);
+	let scrapedTorrentsStore = writable<ScrapedTorrent[]>([]);
+	let scrapeLoading = true;
+	let scrapeDialogOpen = false;
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	function filterSpecial(seasons: any) {
@@ -93,16 +102,16 @@
 		});
 	}
 
-	async function addMagnetLink(_id: number, magnet: string) {
+	async function addMagnetLink(_id: number, magnet: string): Promise<boolean> {
 		if (!magnet) {
 			toast.error('Magnet link cannot be empty');
-			return;
+			return false;
 		}
 		if (isShow && !selectedMagnetItem) {
 			toast.error('Select a season/episode');
-			return;
+			return false;
 		}
-		if (magnetLoading) return;
+		if (magnetLoading) return false;
 		magnetLoading = true;
 		const id = isShow ? selectedMagnetItem.value._id : _id;
 		const response = await fetch(`/api/media/${id}/magnet`, {
@@ -115,9 +124,75 @@
 		magnetLoading = false;
 		if (!response.ok) {
 			toast.error((await response.json()).error ?? 'Unknown error');
-			return;
+			return false;
 		}
 		toast.success('Magnet link added successfully');
+		invalidateAll();
+		return true;
+	}
+
+	async function onScrapeClick() {
+		scrapeLoading = true;
+		const torrents = (await scrapeItem(data.details.external_ids.imdb_id)) ?? [];
+		scrapeLoading = false;
+		scrapedTorrentsStore.update((x) => torrents);
+		if (!torrents) return;
+		if (torrents.length === 0) {
+			toast.error('No torrents found');
+			return;
+		}
+	}
+
+	async function onAddMagnetFromScraped(magnet: string) {
+		let id = data.db?._id;
+		if (!data.db) {
+			// This means that we haven't added the item to the database yet
+			const response = await fetch(`/api/media/index`, {
+				method: 'POST',
+				body: JSON.stringify({
+					imdb_ids: [data.details.external_ids.imdb_id]
+				})
+			});
+			if (response.ok) {
+				const response_data: ApiResponse<RivenItem[]> = await response.json();
+				id = response_data.data[0].id;
+			} else {
+				toast.error('An error occurred while indexing the media');
+				return;
+			}
+		}
+
+		if (!id) {
+			toast.error('An unknown error occurred');
+			return;
+		}
+
+		const success = await addMagnetLink(id, magnet);
+		if (success) {
+			scrapeDialogOpen = false;
+		}
+	}
+
+	async function scrapeItem(imdb_id: string): Promise<ScrapedTorrent[] | undefined> {
+		try {
+			const response = await fetch(`/api/media/scrape?imdb_id=${imdb_id}`, {
+				method: 'GET'
+			});
+
+			const data = await response.json();
+
+			if (response.ok) {
+				return data.data as ScrapedTorrent[];
+			} else {
+				if (data.error) {
+					toast.error(data.error);
+				} else {
+					toast.error('An error occurred while scraping the media');
+				}
+			}
+		} catch {
+			toast.error('An error occurred while scraping the media');
+		}
 	}
 </script>
 
@@ -215,6 +290,32 @@
 						{data.details.overview}
 					</div>
 					<div class="mt-4 flex flex-wrap items-center justify-center gap-2 md:justify-start">
+						<Dialog.Root bind:open={scrapeDialogOpen}>
+							<Dialog.Trigger asChild let:builder>
+								<Button
+									class="flex items-center gap-1"
+									builders={[builder]}
+									on:click={() => onScrapeClick()}
+								>
+									<Search class="size-4" />
+									Scrape
+								</Button>
+							</Dialog.Trigger>
+							<Dialog.Content class="z-[99] max-w-xl lg:max-w-3xl">
+								<Dialog.Header>Scraped Torrents</Dialog.Header>
+								{#if !scrapeLoading}
+									<ScrapeTable
+										torrentStore={scrapedTorrentsStore}
+										{magnetLoading}
+										onAddMagnet={onAddMagnetFromScraped}
+									/>
+								{:else}
+									<div class="flex h-32 w-full items-center justify-center">
+										<LoaderCircle class="size-10 animate-spin" />
+									</div>
+								{/if}
+							</Dialog.Content>
+						</Dialog.Root>
 						{#if data.db}
 							<Sheet.Root>
 								<Sheet.Trigger asChild let:builder>

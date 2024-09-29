@@ -45,6 +45,7 @@ export interface TorboxUserResponse {
 }
 
 export interface RivenItem {
+	id: number;
 	item_id: number;
 	title: string;
 	type: string;
@@ -61,4 +62,15 @@ export interface RivenItem {
 	requested_by: string;
 	scraped_at: string | null;
 	scraped_times: number | null;
+}
+
+export interface ScrapedTorrent {
+	raw_title: string;
+	infohash: string;
+	rank: number;
+}
+
+export interface ApiResponse<T> {
+	success: string;
+	data: T;
 }
