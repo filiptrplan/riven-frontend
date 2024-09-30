@@ -61,6 +61,7 @@
 		"motion": "^10.18.0",
 		"nprogress": "^0.2.0",
 		"pg": "^8.12.0",
+		"svelte-headless-table": "^0.18.2",
 		"svelte-sonner": "^0.3.24",
 		"sveltekit-superforms": "^2.14.0",
 		"tailwind-merge": "^2.3.0",
