@@ -4,7 +4,7 @@
 	import * as Table from '$lib/components/ui/table';
 	import { addPagination } from 'svelte-headless-table/plugins';
 	import { Button } from '$lib/components/ui/button';
-	import ScrapeTableActions from '$lib/components/scrape-table-actions.svelte';
+	import ScrapeTableActions from './scrape-table-actions.svelte';
 	import type { ScrapedTorrent } from '$lib/types';
 
 	export let torrentStore: Readable<ScrapedTorrent[]>;

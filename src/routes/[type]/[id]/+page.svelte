@@ -33,7 +33,7 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Trigger } from '$lib/components/ui/accordion';
 	import { writable } from 'svelte/store';
-	import ScrapeTable from '$lib/components/scrape-table.svelte';
+	import ScrapeTable from './scrape-table.svelte';
 	import type { ApiResponse, RivenItem, ScrapedTorrent } from '$lib/types';
 
 	export let data: PageData;
