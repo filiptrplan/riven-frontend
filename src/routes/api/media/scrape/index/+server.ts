@@ -1,9 +1,8 @@
+
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ locals, url }) => {
 	const imdb = url.searchParams.get('imdb_id');
-	const season = url.searchParams.get('season');
-	const episode = url.searchParams.get('episode');
 
 	if (!imdb) {
 		return new Response(
@@ -20,21 +19,14 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	}
 
 	try {
-		const url = new URL(`${locals.BACKEND_URL}/scrape`);
+		const url = new URL(`${locals.BACKEND_URL}/scrape/index`);
 		url.searchParams.set('imdb_id', imdb);
 		url.searchParams.set('add_item', '0');
-		if (season) {
-			url.searchParams.set('season', season);
-		}
-		if (episode) {
-			url.searchParams.set('episode', episode);
-		}
 		const response = await fetch(url, {
 			method: 'GET'
 		});
 
 		const data = await response.json();
-
 		if (response.ok) {
 			return new Response(
 				JSON.stringify({
@@ -64,7 +56,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	} catch {
 		return new Response(
 			JSON.stringify({
-				error: 'Failed to scrape media item'
+				error: 'Failed to index media item'
 			}),
 			{
 				status: 500,

@@ -35,18 +35,26 @@
 	import { writable } from 'svelte/store';
 	import ScrapeTable from './scrape-table.svelte';
 	import type { ApiResponse, RivenItem, ScrapedTorrent } from '$lib/types';
+	import EpisodeDropdown from './episode-dropdown.svelte';
 
 	export let data: PageData;
 
 	let productionCompanies = 4;
 	let magnetLink = '';
 	let magnetLoading = false;
-	let isShow = data.db ? data.db.type === 'show' : false;
+	let isShow = data.db ? data.db.type === 'show' : data.mediaType == 'tv';
 	let selectedMagnetItem: Selected<{ _id: number; file?: string; folder?: string }>;
+	let selectedItemToScrape: Selected<{
+		_id: number;
+		type: 'Show' | 'Episode' | 'Season';
+		number: number;
+		season_number: number;
+	}>;
 	$: buttonEnabled = magnetLink && !magnetLoading && (isShow ? selectedMagnetItem : true);
 	let scrapedTorrentsStore = writable<ScrapedTorrent[]>([]);
 	let scrapeLoading = true;
 	let scrapeDialogOpen = false;
+	let indexData: any;
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	function filterSpecial(seasons: any) {
@@ -131,13 +139,74 @@
 		return true;
 	}
 
+	async function scrapeSelectedItem(): Promise<ScrapedTorrent[]> {
+		let torrents: ScrapedTorrent[] = [];
+		if (!indexData) {
+			return [];
+		}
+		if (!selectedItemToScrape) {
+			return [];
+		}
+		if (indexData.type == 'Show') {
+			if (selectedItemToScrape.value.type == 'Episode') {
+				torrents =
+					(await scrapeItem(
+						data.details.external_ids.imdb_id,
+						selectedItemToScrape.value.season_number,
+						selectedItemToScrape.value.number
+					)) ?? [];
+			} else if (selectedItemToScrape.value.type == 'Season') {
+				torrents =
+					(await scrapeItem(
+						data.details.external_ids.imdb_id,
+						selectedItemToScrape.value.number
+					)) ?? [];
+			}
+		} else {
+			torrents = (await scrapeItem(data.details.external_ids.imdb_id)) ?? [];
+		}
+		return torrents;
+	}
+
+	$: {
+		if (selectedItemToScrape) {
+			onScrapeClick();
+		}
+	}
+
 	async function onScrapeClick() {
 		scrapeLoading = true;
-		const torrents = (await scrapeItem(data.details.external_ids.imdb_id)) ?? [];
+		// We need to index the media first
+		if (!indexData) {
+			const response = await fetch(
+				`/api/media/scrape/index?imdb_id=${data.details.external_ids.imdb_id}`
+			);
+			if (response.ok) {
+				const responseData = await response.json();
+				indexData = responseData.data;
+				// This is a hack to add season number to episodes, should be done in the backend
+				if (indexData.type == 'Show') {
+					indexData = {
+						...indexData,
+						seasons: indexData.seasons.map((season: any, i: number) => ({
+							...season,
+							episodes: season.episodes.map((episode: any, j: number) => ({
+								...episode,
+								season_number: i + 1
+							}))
+						}))
+					};
+				}
+			} else {
+				toast.error('An error occurred while indexing the media');
+				return;
+			}
+		}
+		const torrents = await scrapeSelectedItem();
 		scrapeLoading = false;
 		scrapedTorrentsStore.update((x) => torrents);
 		if (!torrents) return;
-		if (torrents.length === 0) {
+		if (torrents.length === 0 && selectedItemToScrape) {
 			toast.error('No torrents found');
 			return;
 		}
@@ -173,12 +242,21 @@
 		}
 	}
 
-	async function scrapeItem(imdb_id: string): Promise<ScrapedTorrent[] | undefined> {
+	async function scrapeItem(
+		imdb_id: string,
+		season?: number,
+		episode?: number
+	): Promise<ScrapedTorrent[] | undefined> {
 		try {
-			const response = await fetch(`/api/media/scrape?imdb_id=${imdb_id}`, {
-				method: 'GET'
-			});
-
+			const url = new URL(`/api/media/scrape`, window.location.origin);
+			url.searchParams.set('imdb_id', imdb_id);
+			if (season) {
+				url.searchParams.set('season', season.toString());
+			}
+			if (episode) {
+				url.searchParams.set('episode', episode.toString());
+			}
+			const response = await fetch(url);
 			const data = await response.json();
 
 			if (response.ok) {
@@ -303,6 +381,9 @@
 							</Dialog.Trigger>
 							<Dialog.Content class="z-[99] max-w-xl lg:max-w-3xl">
 								<Dialog.Header>Scraped Torrents</Dialog.Header>
+								{#if isShow}
+									<EpisodeDropdown bind:selectedItem={selectedItemToScrape} showData={indexData} />
+								{/if}
 								{#if !scrapeLoading}
 									<ScrapeTable
 										torrentStore={scrapedTorrentsStore}
@@ -356,30 +437,7 @@
 										<div class="mt-1"></div>
 
 										{#if isShow}
-											<Select.Root portal={null} bind:selected={selectedMagnetItem}>
-												<Select.Trigger>
-													<Select.Value placeholder="Select a season/episode" />
-												</Select.Trigger>
-												<Select.Content class="max-h-[600px] overflow-y-scroll sm:max-h-[300px]">
-													<Select.Group>
-														{#each data.db.seasons as season}
-															<Select.Label>Season {season.number}</Select.Label>
-															<Select.Item value={season}>
-																All episodes in season {season.number}
-															</Select.Item>
-															{#each season.episodes as episode}
-																<Select.Item value={episode}>
-																	S{season.number.toString().padStart(2, '0')}E{episode.number
-																		.toString()
-																		.padStart(2, '0')}
-																	{episode.title}
-																</Select.Item>
-															{/each}
-														{/each}
-													</Select.Group>
-												</Select.Content>
-												<Select.Input name="favoriteFruit" />
-											</Select.Root>
+											<EpisodeDropdown bind:selectedItem={selectedMagnetItem} showData={data.db} />
 										{/if}
 
 										<Input bind:value={magnetLink} placeholder="Paste in the magnet link" />
